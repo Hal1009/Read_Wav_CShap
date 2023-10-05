@@ -60,6 +60,10 @@ namespace WpfApp1_wav
             public bool IsReadConpleted { get; set; } = false;
         }
 
+        public List<string> RLogs { get; set; } = new List<string>();
+        public List<string> LLogs { get; set; } = new List<string>();
+
+
         public MainWindow()
         {
             InitializeComponent();
@@ -76,6 +80,8 @@ namespace WpfApp1_wav
 
             if (wavData.IsReadConpleted)
             {
+                ConvertWavData(wavData);
+
                 Play(wavData);
             }
         }
@@ -194,5 +200,57 @@ namespace WpfApp1_wav
                 }
             }
         }
+
+        private void ConvertWavData(WavData wavData)
+        {
+            int dataChunkSize = BitConverter.ToInt32(wavData.WavDataChunkData.ChunkSize);
+            int channels = BitConverter.ToInt16(wavData.FmtChunkData.Channels);
+            int bitsPerSecond = BitConverter.ToInt16(wavData.FmtChunkData.BitsPerSecond);
+            int[] R = new int[(dataChunkSize / channels) / (bitsPerSecond / 8)];
+            int[] L = new int[(dataChunkSize / channels) / (bitsPerSecond / 8)];
+
+            int frameIndex = 0;
+            int channelIndex = 0;
+            int size = dataChunkSize / (bitsPerSecond / 8);
+            for (int i =0;i<dataChunkSize / (bitsPerSecond / 8);i++)
+            {
+                byte[] data = new byte[2];
+                int work = 0;
+
+                switch (bitsPerSecond)
+                {
+                    case 8:
+                        work = (int)wavData.WavDataChunkData.SampleData[frameIndex];
+                        frameIndex += 1;
+                        break;
+                    case 16:
+                        Array.Copy(wavData.WavDataChunkData.SampleData, frameIndex, data, 0, 2);
+                        work = (int)BitConverter.ToInt16(data, 0);
+                        frameIndex += 2;
+                        break;
+                }
+
+                if(channels == 1) 
+                {
+                    R[i] = work;
+                }
+                else
+                {
+                    if(channelIndex == 0) 
+                    {
+                        channelIndex = 1;
+                        R[i / 2] = work;
+                        RLogs.Add(work.ToString());
+                    }
+                    else
+                    {
+                        channelIndex = 0;
+                        L[i/2] = work;
+                        LLogs.Add(work.ToString());
+                    }
+                }
+            }
+        }
+
     }
 }
